@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+  <name>modulbank</name>
+  <displayName><![CDATA[Оплата через Модульбанк]]></displayName>
+  <version><![CDATA[1.0]]></version>
+  <description><![CDATA[Принимайте платежи в своем интернет-магазине через эквайринг Модульбанка.]]></description>
+  <author><![CDATA[АО КБ "Модульбанк"]]></author>
+  <tab><![CDATA[payments_gateways]]></tab>
+  <confirmUninstall><![CDATA[Вы уверены, что хотите удалить модуль?]]</confirmUninstall>
+  <is_configurable>1</is_configurable>
+  <need_instance>0</need_instance>
+  <limited_countries></limited_countries>
+</module>
