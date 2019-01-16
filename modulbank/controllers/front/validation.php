@@ -149,13 +149,13 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
     {
         switch ($rate) {
             case 0:
-                return 'no_vat';
+                return 'none';
             case 10:
-                return 'vat_10';
+                return 'vat10';
             case 18:
-                return 'vat_18';
+                return 'vat18';
             case 20:
-                return 'vat_20';  // just in case
+                return 'vat20';  // just in case
         }
         return 'no_vat';
     }
