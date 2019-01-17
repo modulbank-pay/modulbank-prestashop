@@ -2,7 +2,7 @@
 
 Модуль позволяет принимать платежи банковской картой через Модульбанк.
 
-Модуль для магазина PrestaShop - [скачать модуль](https://github.com/modulbank-pay/modulbank-prestashop/files/2769369/modulbank.zip).
+Модуль для магазина PrestaShop - [скачать модуль](https://github.com/modulbank-pay/modulbank-prestashop/releases/download/1.1/modulbank.zip).
 
 ### Установка
 
