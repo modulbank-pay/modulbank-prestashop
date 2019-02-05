@@ -117,14 +117,23 @@ class FPaymentsForm {
             if (!$receipt_contact) {
                 throw new FPaymentsError('receipt_contact required');
             }
-            $items_sum = 0;
+            $items_sum = $this->get_items_sum($receipt_items);
             $items_arr = array();
+
+            for ($i = 0; $i < 2 && $items_sum != $amount; $i++) {
+                $receipt_items[0]->apply_price_correction($amount - $items_sum);
+                $items_sum = $this->get_items_sum($receipt_items);
+            }
+
+            $items_sum = 0;
             foreach ($receipt_items as $item) {
                 $items_sum += $item->get_sum();
                 $items_arr[] = $item->as_dict();
             }
             $items_sum = round($items_sum, 2);
+
             if ($items_sum != $amount) {
+
                 throw new FPaymentsError("Amounts mismatch: sum of cart items: ${items_sum}, order amount: ${amount}");
             }
             $form['receipt_contact'] = $receipt_contact;
@@ -132,6 +141,16 @@ class FPaymentsForm {
         };
         $form['signature'] = $this->get_signature($form);
         return $form;
+    }
+
+    private function get_items_sum($receipt_items)
+    {
+        $items_sum = 0;
+        foreach ($receipt_items as $item) {
+            $items_sum += $item->get_sum();
+        }
+
+        return round($items_sum, 2);
     }
 
     private function get_sysinfo() {
@@ -378,6 +397,36 @@ class FPaymentsRecieptItem {
         }
         return $result;
     }
+
+    function set_total($total) {
+
+        $price = $this->price;
+        $n = $this->n;
+
+        $current_total = $this->n * $this->price;
+        $diff = $total - $current_total;
+
+        $this->price =  $price + $diff / $n;
+    }
+
+    function apply_price_correction($cartDifference)
+    {
+        $price = $this->price;
+
+        $n = $this->n;
+
+        if(!$n)
+            return;
+
+        $total = $price * $n;
+
+        $price = ($total + $cartDifference) /  $n;
+
+        $price = round($price, 2);
+
+        $this->price = $price;
+    }
+
 
     private static function clean_title($s, $max_chars=64) {
         $result = '';

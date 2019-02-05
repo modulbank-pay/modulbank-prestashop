@@ -7,7 +7,7 @@ if (!defined('_PS_VERSION_'))
 class ModulbankCallbackHandler extends \FPayments\AbstractFPaymentsCallbackHandler
 {
     private $module;
-    private $cart;
+    private $order;
 
     public function __construct(Modulbank $module)
     {
@@ -19,37 +19,34 @@ class ModulbankCallbackHandler extends \FPayments\AbstractFPaymentsCallbackHandl
         return $this->module->initializeFPaymentsForm();
     }
 
-    protected function load_order($cart_id)
+    protected function load_order($order_id)
     {
-        if (!isset($this->cart)) {
-            $this->cart = new Cart(intval($cart_id));
+        if (!isset($this->order)) {
+            $this->order = new Order(intval($order_id));
         }
 
-        return $this->cart;
+        return $this->order;
     }
 
-    protected function get_order_currency($cart)
+    protected function get_order_currency($order)
     {
-        $currency = new Currency(intval($cart->id_currency));
+        $currency = new Currency(intval($order->id_currency));
         return $currency->iso_code;
     }
 
-    protected function get_order_amount($cart)
+    protected function get_order_amount($order)
     {
-        return $cart->getOrderTotal(true, Cart::BOTH);
+        return $order->total_paid;
     }
 
-    protected function is_order_completed($cart)
+    protected function is_order_completed($order)
     {
-        $order_id = Order::getIdByCartId($cart->id);
-        $order = new Order($order_id);
-
-        return $order->current_state === Configuration::get('PS_OS_PAYMENT');
+        return $order->current_state === _PS_OS_PAYMENT_; //Configuration::get('PS_OS_PAYMENT');
     }
 
-    protected function mark_order_as_completed($cart, array $data)
+    protected function mark_order_as_completed($order, array $data)
     {
-        $this->module->processPaymentResult($cart, $data);
+        $this->module->processPaymentResult($order, $data);
 
         return true;
     }
@@ -79,24 +76,31 @@ class ModulbankCallbackModuleFrontController extends ModuleFrontController
 
     public function postProcess()
     {
-        $cart_id = Tools::getValue('order_id');
-        $cart = new Cart($cart_id);
+        PrestaShopLogger::addLog(
+            'Modulbank callback data: ' . var_export($_POST, true),
+            1,
+            null,
+            'Modulbank payment module',
+            null,
+            false
+        );
+
+        $order_id = Tools::getValue('order_id');
+        $order = new Order(intval($order_id));
 
         $context = Context::getContext();
-        $context->currency = new Currency($cart->id_currency);
-
-        $amount = $cart->getOrderTotal(true, Cart::BOTH);
+        $context->currency = new Currency($order->id_currency);
 
         PrestaShopLogger::addLog(
             'Modulbank callback data: ' . var_export($_POST, true),
             1,
             null,
             'Modulbank payment module',
-            (int)$cart->id,
+            (int)$order_id,
             false
         );
 
-        if (!Validate::isLoadedObject($cart))
+        if (!Validate::isLoadedObject($order))
             die('Error to load cart');
 
         $modulbankModule = Module::getInstanceByName('modulbank');

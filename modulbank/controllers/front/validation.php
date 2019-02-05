@@ -60,7 +60,17 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
             Tools::redirect('index.php?controller=order&step=2');
 
 
-        $this->module->validateOrder($cart->id, Configuration::get('PS_OS_BANKWIRE'), $amount, $this->module->displayName, NULL,  array(), (int)$currency->id, false, $customer->secure_key);
+        $this->module->validateOrder($cart->id,
+                                       Configuration::get('PS_OS_BANKWIRE'),
+                                        $amount,
+                                        $this->module->displayName,
+                                        NULL,
+                                        array(),
+                                        (int)$currency->id,
+                                        false,
+                                        $customer->secure_key);
+
+        $order_id = Order::getIdByCartId($cart->id);
 
 
         $cancel_url = Tools::getHttpHost(true) . __PS_BASE_URI__ . 'index.php?controller=order&step=3';
@@ -85,7 +95,7 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
             'modulbank',
             'callback',
             [
-                'cart_id' => $cart->id
+                'order_id' => $order_id
             ]
         );
 
@@ -101,7 +111,7 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
                 $item['price_wt'], // with taxes
                 $item['quantity'],
                 0,
-                $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'no_vat',
+                $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'none',
                 $sno,
                 $payment_object,
                 $payment_method
@@ -127,10 +137,13 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
             );
         }
 
+
+        $receipt_items = $this->correct_items($amount, $receipt_items);
+
         return $form->compose(
             $amount,
             $currency->iso_code,
-            $cart->id,
+            $order_id,
             $customer->email,
             $customer->firstname . ' ' . $customer->lastname,
             $address->phone_mobile,
@@ -145,6 +158,46 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
         );
     }
 
+    private function correct_items($total, array  $receiptItems)
+    {
+        $sum = 0;
+
+        $items = $receiptItems;
+
+        foreach ($items as $item) {
+            $sum += $item->get_sum();
+        }
+
+        if ($sum != $total) {
+            $sum_amount_new = 0;
+            $difference = $total - $sum;
+            $amount_news = array();
+
+            foreach ($items as $item_new) {
+                $coeff = floor($difference * $item_new->get_sum() / $sum);
+                $items_amount_new = $item_new->get_sum() + $coeff;
+                $amount_news[] = $items_amount_new;
+                $sum_amount_new += $items_amount_new;
+            }
+
+            if ($sum_amount_new != $total) {
+                $difference_amount_new = $total - $sum_amount_new;
+                $max_key = array_keys($amount_news, max($amount_news))[0];    // ключ макс значения
+                $amount_news[$max_key] = max($amount_news) + $difference_amount_new;
+            }
+
+            foreach ($amount_news as $key_amount_new => $array_am_new) {
+                foreach ($items as $key => $item) {
+                    if ($key_amount_new == $key) {
+                        $receiptItems[$key_amount_new]->set_total($array_am_new);
+                    }
+                }
+            }
+        }
+
+        return $receiptItems;
+    }
+
     private function guessTaxType($rate)
     {
         switch ($rate) {
@@ -157,6 +210,7 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
             case 20:
                 return 'vat20';  // just in case
         }
-        return 'no_vat';
+
+        return 'vat0';
     }
 }

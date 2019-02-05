@@ -373,24 +373,23 @@ class Modulbank extends PaymentModule
         return $this->display(__FILE__, 'payment-return.tpl');
     }
 
-    public function processPaymentResult($cart, $data)
+    public function processPaymentResult($order, $data)
     {
-        if ($cart->id != $data['order_id']) {
+        if ($order->id != $data['order_id']) {
             die('Incorrect order_id');
         }
         if ($data['state'] === 'COMPLETE') {
-            $state = Configuration::get('PS_OS_PAYMENT');
+            $state = _PS_OS_PAYMENT_;///Configuration::get('PS_OS_PAYMENT');
             //$state = Configuration::get('PS_OS_BANKWIRE');
             $message = $this->l("Заказ оплачен");
         } else {
-            $state = Configuration::get('PS_OS_ERROR');
+            $state = _PS_OS_CANCELED_;//Configuration::get('PS_OS_ERROR');
             $message = $this->l("При оплате произошла ошибка");
             if ($data['message']) {
                 $message .= ": " . $data['message'];
             }
         }
 
-        $order = new Order((int)$cart->id);
         $order->setCurrentState($state);
 
     }
