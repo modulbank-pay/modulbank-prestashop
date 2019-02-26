@@ -382,6 +382,8 @@ class Modulbank extends PaymentModule
             $state = _PS_OS_PAYMENT_;///Configuration::get('PS_OS_PAYMENT');
             //$state = Configuration::get('PS_OS_BANKWIRE');
             $message = $this->l("Заказ оплачен");
+            $order->setCurrentState(_PS_OS_PREPARATION_);
+
         } else {
             $state = _PS_OS_CANCELED_;//Configuration::get('PS_OS_ERROR');
             $message = $this->l("При оплате произошла ошибка");
@@ -389,6 +391,7 @@ class Modulbank extends PaymentModule
                 $message .= ": " . $data['message'];
             }
         }
+
 
         $order->setCurrentState($state);
 

@@ -120,14 +120,7 @@ class FPaymentsForm {
             $items_sum = $this->get_items_sum($receipt_items);
             $items_arr = array();
 
-            for ($i = 0; $i < 2 && $items_sum != $amount; $i++) {
-                $receipt_items[0]->apply_price_correction($amount - $items_sum);
-                $items_sum = $this->get_items_sum($receipt_items);
-            }
-
-            $items_sum = 0;
             foreach ($receipt_items as $item) {
-                $items_sum += $item->get_sum();
                 $items_arr[] = $item->as_dict();
             }
             $items_sum = round($items_sum, 2);
@@ -361,17 +354,17 @@ class FPaymentsRecieptItem {
     private $title;
     private $price;
     private $n;
-    private $discount_amount;
+    private $total;
     private $nds;
     private $sno;
     private $payment_object;
     private $payment_method;
 
-    function __construct($title, $price, $n = 1, $discount_amount = null, $nds = null, $sno=null, $payment_object=null, $payment_method=null) {
+    function __construct($title, $price, $n = 1, $total = null, $nds = null, $sno=null, $payment_object=null, $payment_method=null) {
         $this->title = self::clean_title($title);
-        $this->price = $price;
+        $this->price = round($price, 2);
         $this->n = $n;
-        $this->discount_amount = $discount_amount;
+        $this->total = $total == null ?  round($this->price * $this->n, 2) : $total;
         $this->nds = $nds ? $nds : self::TAX_NO_NDS;
         $this->sno = $sno;
         $this->payment_object = $payment_object;
@@ -391,11 +384,7 @@ class FPaymentsRecieptItem {
     }
 
     function get_sum() {
-        $result = $this->n * $this->price;
-        if ($this->discount_amount) {
-            $result = $result - $this->discount_amount;
-        }
-        return $result;
+        return $this->total;
     }
 
     function set_total($total) {
@@ -409,22 +398,77 @@ class FPaymentsRecieptItem {
         $this->price =  $price + $diff / $n;
     }
 
-    function apply_price_correction($cartDifference)
+    function split_items_to_correct_price($totalRowAmount=null)
     {
         $price = $this->price;
-
         $n = $this->n;
-
-        if(!$n)
-            return;
 
         $total = $price * $n;
 
-        $price = ($total + $cartDifference) /  $n;
+        if($totalRowAmount == null)
+            $totalRowAmount = $this->total;
 
-        $price = round($price, 2);
+        // ничего менять не надо, все сходится
+        if($totalRowAmount == $total)
+            return [$this];
 
-        $this->price = $price;
+        // можно просто изменить цену
+        if($n == 1)
+        {
+            $this->price = round($totalRowAmount,2);
+            $this->total = round($totalRowAmount,2);
+            return [$this];
+        }
+
+        // цена сейчас меньше чем требуется... хз чо делать-то
+        if($total < $totalRowAmount)
+        {
+            return [$this];
+        }
+
+        // рассматриваем ситуацию, когда применяем скидку
+        // будем считать все в копейках, чтобы удобно округлять
+
+        $roundItemsPrice = round($totalRowAmount * 100 / ($n));
+        $roundItemsTotal = $roundItemsPrice * $n;
+        $diffItemPrice = round($totalRowAmount * 100 - $roundItemsTotal);
+
+
+        if(($diffItemPrice + 0) == 0)
+        {
+            $this->price = round($roundItemsPrice / 100, 2);
+            $this->total = round($totalRowAmount, 2);
+            return [$this];
+        }
+
+        $resultItems = array();
+        $roundItemsPrice = round($totalRowAmount * 100 / ($n - 1));
+        $roundItemsTotal = round($roundItemsPrice * ($n - 1));
+
+        $resultItems[]= new FPaymentsRecieptItem(
+            $this->title,
+            $roundItemsPrice / 100,
+            $n-1,
+            $roundItemsTotal / 100,
+            $this->nds,
+            $this->sno,
+            $this->payment_object,
+            $this->payment_method);
+
+
+            $lastItemPrice =  $totalRowAmount * 100 - $roundItemsTotal;
+
+            $resultItems[] = new FPaymentsRecieptItem($this->title,
+                $lastItemPrice / 100,
+                1,
+                $lastItemPrice / 100,
+                $this->nds,
+                $this->sno,
+                $this->payment_object,
+                $this->payment_method);
+
+
+        return $resultItems;
     }
 
 

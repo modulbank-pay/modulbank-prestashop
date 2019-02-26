@@ -75,14 +75,6 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
 
         $cancel_url = Tools::getHttpHost(true) . __PS_BASE_URI__ . 'index.php?controller=order&step=3';
 
-        $success_url = $this->context->link->getModuleLink(
-            'modulbank',
-            'result',
-            [
-                'cart_id' => $cart->id,
-                'status' => 'failure',
-            ]
-        );
         $fail_url = $this->context->link->getModuleLink(
             'modulbank',
             'result',
@@ -105,12 +97,16 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
 
         $receipt_items = [];
         $receipt_contact = $this->context->cookie->email;
+        $receipt_itemsSum = 0;
+
         foreach ($cart->getProducts() as $item) {
+            $receipt_itemsSum = $receipt_itemsSum + $item['total_wt'];
+
             $receipt_items[] = new \FPayments\FPaymentsRecieptItem(
                 $item['name'],
                 $item['price_wt'], // with taxes
                 $item['quantity'],
-                0,
+                $item['total_wt'],
                 $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'none',
                 $sno,
                 $payment_object,
@@ -129,7 +125,7 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
                 $carrier->name,
                 $delivery_price,
                 1,
-                0,
+                $delivery_price,
                 $this->guessTaxType($tax_rate),
                 $sno,
                 'service',
@@ -137,8 +133,9 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
             );
         }
 
+        $itemsTotal = $receipt_itemsSum + $delivery_price;
 
-        $receipt_items = $this->correct_items($amount, $receipt_items);
+
 
         return $form->compose(
             $amount,
@@ -163,39 +160,25 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
         $sum = 0;
 
         $items = $receiptItems;
+        $resultItems = array();
 
         foreach ($items as $item) {
             $sum += $item->get_sum();
         }
 
-        if ($sum != $total) {
-            $sum_amount_new = 0;
-            $difference = $total - $sum;
-            $amount_news = array();
+        if($sum == $total)
+            return $receiptItems;
 
-            foreach ($items as $item_new) {
-                $coeff = floor($difference * $item_new->get_sum() / $sum);
-                $items_amount_new = $item_new->get_sum() + $coeff;
-                $amount_news[] = $items_amount_new;
-                $sum_amount_new += $items_amount_new;
-            }
+        $difference = $total - $sum;
 
-            if ($sum_amount_new != $total) {
-                $difference_amount_new = $total - $sum_amount_new;
-                $max_key = array_keys($amount_news, max($amount_news))[0];    // ключ макс значения
-                $amount_news[$max_key] = max($amount_news) + $difference_amount_new;
-            }
+        $coeff = 1 + ($difference / $sum);
 
-            foreach ($amount_news as $key_amount_new => $array_am_new) {
-                foreach ($items as $key => $item) {
-                    if ($key_amount_new == $key) {
-                        $receiptItems[$key_amount_new]->set_total($array_am_new);
-                    }
-                }
-            }
+        foreach ($items as $item_new) {
+            $items_amount_new = $item_new->get_sum() * $coeff;
+            $resultItems = array_merge($resultItems, $item_new->split_items_to_correct_price($items_amount_new));
         }
 
-        return $receiptItems;
+        return $resultItems;
     }
 
     private function guessTaxType($rate)
