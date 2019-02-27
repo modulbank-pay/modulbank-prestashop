@@ -17,4 +17,4 @@
 
 ### Видеоинструкция
 
-![Видеоинструкция по установке платежного модуля Модульбанка](https://modulbank-pay.github.io/screenshots/prestashop17/screencast.gif)
+![Видеоинструкция по установке платежного модуля Модульбанка](https://modulbank-pay.github.io/screenshots/prestashop17/screencast.gif) 
