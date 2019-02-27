@@ -75,6 +75,8 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
 
         $cancel_url = Tools::getHttpHost(true) . __PS_BASE_URI__ . 'index.php?controller=order&step=3';
 
+        $success_url =  Tools::getHttpHost(true) . __PS_BASE_URI__ . 'order-confirmation?id_order='.$order_id.'&id_cart='.$cart->id.'&key='.$customer->secure_key.'&id_module='.$this->module->id;
+
         $fail_url = $this->context->link->getModuleLink(
             'modulbank',
             'result',
