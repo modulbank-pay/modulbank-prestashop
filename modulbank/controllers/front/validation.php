@@ -108,7 +108,6 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
                 $item['name'],
                 $item['price_wt'], // with taxes
                 $item['quantity'],
-                $item['total_wt'],
                 $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'none',
                 $sno,
                 $payment_object,
@@ -127,7 +126,6 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
                 $carrier->name,
                 $delivery_price,
                 1,
-                $delivery_price,
                 $this->guessTaxType($tax_rate),
                 $sno,
                 'service',
