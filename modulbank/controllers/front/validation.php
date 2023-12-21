@@ -103,9 +103,12 @@ class ModulbankValidationModuleFrontController extends ModuleFrontController
 
         foreach ($cart->getProducts() as $item) {
             $receipt_itemsSum = $receipt_itemsSum + $item['total_wt'];
-
+            $name = $item['name'];
+            if ($item['attributes_small']) {
+                $name .= ", {$item['attributes_small']}";
+            }
             $receipt_items[] = new \FPayments\FPaymentsRecieptItem(
-                $item['name'],
+                $name,
                 $item['price_wt'], // with taxes
                 $item['quantity'],
                 $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'none',
