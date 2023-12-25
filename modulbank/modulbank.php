@@ -49,6 +49,8 @@ class Modulbank extends PaymentModule
             !$this->registerHook('paymentReturn'))
             return false;
 
+        $this->registerHook('displayOrderDetail');
+
         Configuration::updateValue('MODULBANK_MERCHANT_ID', '');
         Configuration::updateValue('MODULBANK_SECRET_KEY', '');
         Configuration::updateValue('MODULBANK_TEST_MODE', 1);
@@ -395,5 +397,142 @@ class Modulbank extends PaymentModule
 
         $order->setCurrentState($state);
 
+    }
+
+    public function hookDisplayOrderDetail($params)
+    {
+        /** @var Order $order */
+        $order = $params['order'];
+
+        $customer = $this->context->customer;
+
+        if (!$this->active || $order->module != $this->name || $order->id_customer != $customer->id) {
+            return '';
+        }
+
+        if ($order->hasBeenPaid()) {
+            return '';
+        }
+
+        /*
+
+        $waiting = $order->getCurrentOrderState()->id === (int) Configuration::get('PS_OS_BANKWIRE');
+
+        if (!$waiting) {
+            return '';
+        }*/
+
+        $order_id = $order->id;
+
+        $form = $this->initializeFPaymentsForm();
+
+        $cart = Cart::getCartByOrderId($order->id);
+        $amount = $cart->getOrderTotal(true, Cart::BOTH);
+        $currency = new Currency(intval($cart->id_currency));
+        $address = new Address(intval($cart->id_address_invoice));
+
+        $customer = $order->getCustomer();
+
+        $cancel_url = Tools::getHttpHost(true) . __PS_BASE_URI__ . 'index.php?controller=order-detail&id_order='.$order_id;
+        $fail_url = Tools::getHttpHost(true) . __PS_BASE_URI__ . 'index.php?controller=order-detail&id_order='.$order_id;
+        $success_url =  Tools::getHttpHost(true) . __PS_BASE_URI__ . 'order-confirmation?id_order='.$order_id.'&id_cart='.$cart->id.'&key='.$customer->secure_key.'&id_module='.$this->id;
+
+        $callback_url = $this->context->link->getModuleLink(
+            'modulbank',
+            'callback',
+            [
+                'order_id' => $order_id
+            ]
+        );
+
+        $sno = Configuration::get('MODULBANK_SNO');
+        $payment_object = Configuration::get('MODULBANK_PAYMENT_OBJECT');
+        $payment_method = Configuration::get('MODULBANK_PAYMENT_METHOD');
+
+        $receipt_items = [];
+        $receipt_contact = $this->context->cookie->email;
+        $receipt_itemsSum = 0;
+
+        foreach ($cart->getProducts() as $item) {
+            $receipt_itemsSum = $receipt_itemsSum + $item['total_wt'];
+            $name = $item['name'];
+            if ($item['attributes_small']) {
+                $name .= ", {$item['attributes_small']}";
+            }
+            $receipt_items[] = new \FPayments\FPaymentsRecieptItem(
+                $name,
+                $item['price_wt'], // with taxes
+                $item['quantity'],
+                $item['tax_name'] ? $this->guessTaxType($item['rate']) : 'none',
+                $sno,
+                $payment_object,
+                $payment_method
+            );
+        }
+
+        $delivery_price = $cart->getPackageShippingCost();
+        if ($delivery_price > 0) {
+            $carrier = new Carrier($cart->id_carrier, Configuration::get('PS_LANG_DEFAULT'));
+            $address_id = (int)$cart->id_address_invoice;
+            $address = Address::initialize((int)$address_id);
+            $tax_rate = $carrier->getTaxesRate($address);
+
+            $receipt_items[] = new \FPayments\FPaymentsRecieptItem(
+                $carrier->name,
+                $delivery_price,
+                1,
+                $this->guessTaxType($tax_rate),
+                $sno,
+                'service',
+                $payment_method
+            );
+        }
+
+        $itemsTotal = $receipt_itemsSum + $delivery_price;
+
+
+
+        $form_fields = $form->compose(
+            $amount,
+            $currency->iso_code,
+            $order_id,
+            $customer->email,
+            $customer->firstname . ' ' . $customer->lastname,
+            $address->phone_mobile,
+            $success_url,
+            $fail_url,
+            $cancel_url,
+            $callback_url,
+            '',
+            '',
+            $receipt_contact,
+            $receipt_items
+        );
+
+        $this->context->smarty->assign([
+            'action' => $form->get_url(),
+            'form_fields' => $form_fields,
+        ]);
+
+
+        $html = $this->display(__FILE__, 'frontend-order-info.tpl');
+
+        return $html;
+    }
+
+    public function guessTaxType($rate)
+    {
+        switch ($rate) {
+            case 0:
+                return 'none';
+            case 10:
+                return 'vat10';
+            case 18:
+                return 'vat18';
+            case 20:
+                return 'vat20';  // just in case
+        }
+
+        return 'vat0';
     }
 }
