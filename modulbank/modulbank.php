@@ -457,7 +457,7 @@ class Modulbank extends PaymentModule
             $receipt_itemsSum = $receipt_itemsSum + $item['total_wt'];
             $name = $item['name'];
             if ($item['reference']) {
-                $name = sprintf("%s %s", $item['reference'], $name);
+                $name = sprintf("[%s] %s", $item['reference'], $name);
             }
             if ($item['attributes_small']) {
                 $name .= ", {$item['attributes_small']}";

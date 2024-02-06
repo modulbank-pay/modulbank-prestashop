@@ -531,7 +531,7 @@ class FPaymentsRecieptItem
     {
         $result        = '';
         $arr           = mb_str_split($s);
-        $allowed_chars = mb_str_split('0123456789"(),.:;- йцукенгшщзхъфывапролджэёячсмитьбюqwertyuiopasdfghjklzxcvbnm');
+        $allowed_chars = mb_str_split('0123456789"()[],.:;- йцукенгшщзхъфывапролджэёячсмитьбюqwertyuiopasdfghjklzxcvbnm');
         foreach ($arr as $char) {
             if (mb_strlen($result) >= $max_chars) {
                 break;
