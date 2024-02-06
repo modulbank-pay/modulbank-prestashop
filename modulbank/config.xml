@@ -2,7 +2,7 @@
 <module>
   <name>modulbank</name>
   <displayName><![CDATA[Оплата через Модульбанк]]></displayName>
-  <version><![CDATA[1.3.1]]></version>
+  <version><![CDATA[1.3.2]]></version>
   <description><![CDATA[Принимайте платежи в своем интернет-магазине через эквайринг Модульбанка.]]></description>
   <author><![CDATA[АО КБ "Модульбанк"]]></author>
   <tab><![CDATA[payments_gateways]]></tab>
